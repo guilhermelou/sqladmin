@@ -244,10 +244,13 @@ def get_direction(prop: MODEL_PROPERTY) -> str:
 
 def get_column_python_type(column: Column) -> type:
     try:
-        if hasattr(column.type, "impl"):
-            return column.type.impl.python_type
         return column.type.python_type
     except NotImplementedError:
+        if hasattr(column.type, "impl"):
+            try:
+                return column.type.impl.python_type
+            except NotImplementedError:
+                pass
         return str
 
 
