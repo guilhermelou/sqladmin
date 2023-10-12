@@ -203,11 +203,7 @@ class ModelConverterBase:
         session_maker: sessionmaker,
         loader: Optional[QueryAjaxModelLoader] = None,
     ) -> dict:
-        nullable = True
-        for pair in prop.local_remote_pairs:
-            if not pair[0].nullable:
-                nullable = False
-
+        nullable = all(pair[0].nullable for pair in prop.local_remote_pairs)
         kwargs["allow_blank"] = nullable
 
         if not loader:
@@ -262,11 +258,7 @@ class ModelConverterBase:
 
             # Support for custom types like SQLModel which inherit TypeDecorator
             if hasattr(col_type, "impl"):
-                if callable(col_type.impl):  # type: ignore
-                    impl = col_type.impl  # type: ignore
-                else:
-                    impl = col_type.impl.__class__  # type: ignore
-
+                impl = col_type.impl if callable(col_type.impl) else col_type.impl.__class__
                 if impl.__name__ in self._converters:
                     return self._converters[impl.__name__]
 
@@ -599,7 +591,7 @@ async def get_model_form(
     form_include_pk: bool = False,
     form_converter: Type[ModelConverterBase] = ModelConverter,
 ) -> Type[Form]:
-    type_name = model.__name__ + "Form"
+    type_name = f"{model.__name__}Form"
     converter = form_converter()
     mapper = sqlalchemy_inspect(model)
     form_args = form_args or {}
@@ -610,11 +602,11 @@ async def get_model_form(
 
     attributes = []
     names = only or mapper.attrs.keys()
-    for name in names:
-        if exclude and name in exclude:
-            continue
-        attributes.append((name, mapper.attrs[name]))
-
+    attributes.extend(
+        (name, mapper.attrs[name])
+        for name in names
+        if not exclude or name not in exclude
+    )
     field_dict = {}
     for name, attr in attributes:
         field_args = form_args.get(name, {})

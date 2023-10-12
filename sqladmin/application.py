@@ -224,7 +224,7 @@ class BaseAdmin:
         view.session_maker = self.session_maker
         view.is_async = self.is_async
         view.ajax_lookup_url = urljoin(
-            self.base_url + "/", f"{view.identity}/ajax/lookup"
+            f"{self.base_url}/", f"{view.identity}/ajax/lookup"
         )
         view.templates = self.templates
         view_instance = view()
@@ -676,7 +676,7 @@ class Admin(BaseAdminView):
                 form_data.append((key, value))
                 continue
 
-            should_clear = form.get(key + "_checkbox")
+            should_clear = form.get(f"{key}_checkbox")
             empty_upload = len(await value.read(1)) != 1
             await value.seek(0)
             if should_clear:

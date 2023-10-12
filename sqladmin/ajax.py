@@ -41,12 +41,11 @@ class QueryAjaxModelLoader:
 
         for field in self.fields:
             if isinstance(field, str):
-                attr = getattr(self.model, field, None)
-
-                if not attr:
+                if attr := getattr(self.model, field, None):
+                    remote_fields.append(attr)
+                else:
                     raise ValueError(f"{self.model}.{field} does not exist.")
 
-                remote_fields.append(attr)
             else:
                 remote_fields.append(field)
 
@@ -72,8 +71,7 @@ class QueryAjaxModelLoader:
             stmt = stmt.order_by(self.order_by)
 
         stmt = stmt.limit(limit)
-        result = await self.model_admin._run_query(stmt)
-        return result
+        return await self.model_admin._run_query(stmt)
 
 
 def create_ajax_loader(

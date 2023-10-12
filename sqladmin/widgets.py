@@ -53,10 +53,8 @@ class AjaxSelect2Widget(widgets.Select):
             result = [field.loader.format(value) for value in field.data]
             kwargs["data-json"] = json.dumps(result)
             kwargs["multiple"] = "1"
-        else:
-            data = field.loader.format(field.data)
-            if data:
-                kwargs["data-json"] = json.dumps([data])
+        elif data := field.loader.format(field.data):
+            kwargs["data-json"] = json.dumps([data])
 
         return Markup(f"<select {html_params(name=field.name, **kwargs)}></select>")
 
