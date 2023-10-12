@@ -34,17 +34,16 @@ class Query:
             pk_values = [target_pk_type(value) for value in values]
             return select(target).where(target_pk.in_(pk_values))
 
-        conditions = []
-        for value in values:
-            conditions.append(
-                and_(
-                    pk == value
-                    for pk, value in zip(
-                        target_pks,
-                        object_identifier_values(value, target),
-                    )
+        conditions = [
+            and_(
+                pk == value
+                for pk, value in zip(
+                    target_pks,
+                    object_identifier_values(value, target),
                 )
             )
+            for value in values
+        ]
         return select(target).where(or_(*conditions))
 
     def _get_to_one_stmt(self, relation: MODEL_PROPERTY, value: Any) -> Select:
@@ -52,8 +51,7 @@ class Query:
         target_pks = get_primary_keys(target)
         target_pk_types = [get_column_python_type(pk) for pk in target_pks]
         conditions = [pk == typ(value) for pk, typ in zip(target_pks, target_pk_types)]
-        related_stmt = select(target).where(*conditions)
-        return related_stmt
+        return select(target).where(*conditions)
 
     def _set_many_to_one(self, obj: Any, relation: MODEL_PROPERTY, ident: Any) -> Any:
         values = object_identifier_values(ident, relation.entity)
@@ -62,7 +60,7 @@ class Query:
         # ``relation.local_remote_pairs`` is ordered by the foreign keys
         # but the values are ordered by the primary keys. This dict
         # ensures we write the correct value to the fk fields
-        pk_value = {pk: value for pk, value in zip(pks, values)}
+        pk_value = dict(zip(pks, values))
 
         for fk, pk in relation.local_remote_pairs:
             setattr(obj, fk.name, pk_value[pk])

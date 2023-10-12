@@ -47,11 +47,10 @@ class IntervalField(fields.StringField):
         if not valuelist:
             return
 
-        interval = parse_interval(valuelist[0])
-        if not interval:
+        if interval := parse_interval(valuelist[0]):
+            self.data = interval
+        else:
             raise ValueError("Invalide timedelta format.")
-
-        self.data = interval
 
 
 class SelectField(fields.SelectField):
@@ -107,7 +106,7 @@ class JSONField(fields.TextAreaField):
         if self.raw_data:
             return self.raw_data[0]
         elif self.data:
-            return str(json.dumps(self.data, ensure_ascii=False))
+            return json.dumps(self.data, ensure_ascii=False)
         else:
             return "{}"
 

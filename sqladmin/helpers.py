@@ -227,19 +227,18 @@ def _object_identifier_parts(id_string: str, model: type) -> Tuple[str, ...]:
 
 
 def object_identifier_values(id_string: str, model: Any) -> tuple:
-    values = []
     pks = get_primary_keys(model)
-    for pk, part in zip(pks, _object_identifier_parts(id_string, model)):
-        values.append(get_column_python_type(pk)(part))
+    values = [
+        get_column_python_type(pk)(part)
+        for pk, part in zip(pks, _object_identifier_parts(id_string, model))
+    ]
     return tuple(values)
 
 
 def get_direction(prop: MODEL_PROPERTY) -> str:
     assert isinstance(prop, RelationshipProperty)
     name = prop.direction.name
-    if name == "ONETOMANY" and not prop.uselist:
-        return "ONETOONE"
-    return name
+    return "ONETOONE" if name == "ONETOMANY" and not prop.uselist else name
 
 
 def get_column_python_type(column: Column) -> type:
@@ -280,12 +279,7 @@ def parse_interval(value: str) -> Optional[timedelta]:
 
 
 def is_falsy_value(value: Any) -> bool:
-    if value is None:
-        return True
-    elif not value and isinstance(value, str):
-        return True
-    else:
-        return False
+    return value is None or not value and isinstance(value, str)
 
 
 def choice_type_coerce_factory(type_: Any) -> Callable[[Any], Any]:

@@ -103,7 +103,7 @@ class ModelViewMeta(type):
         return cls
 
     @classmethod
-    def _check_conflicting_options(mcls, keys: List[str], attrs: dict) -> None:
+    def _check_conflicting_options(cls, keys: List[str], attrs: dict) -> None:
         if all(k in attrs for k in keys):
             raise AssertionError(f"Cannot use {' and '.join(keys)} together.")
 
@@ -696,12 +696,11 @@ class ModelView(BaseView, metaclass=ModelViewMeta):
             return result.scalars().unique().all()
 
     async def _run_query(self, stmt: ClauseElement) -> Any:
-        if self.is_async:
-            async with self.session_maker(expire_on_commit=False) as session:
-                result = await session.execute(stmt)
-                return result.scalars().unique().all()
-        else:
+        if not self.is_async:
             return await anyio.to_thread.run_sync(self._run_query_sync, stmt)
+        async with self.session_maker(expire_on_commit=False) as session:
+            result = await session.execute(stmt)
+            return result.scalars().unique().all()
 
     def _url_for_details(self, request: Request, obj: Any) -> Union[str, URL]:
         pk = get_object_identifier(obj)
@@ -725,7 +724,7 @@ class ModelView(BaseView, metaclass=ModelViewMeta):
         url = request.url_for(
             "admin:delete", identity=slugify_class_name(obj.__class__.__name__)
         )
-        return str(url) + "?" + query_params
+        return f"{str(url)}?{query_params}"
 
     def _url_for_details_with_prop(
         self, request: Request, obj: Any, prop: str
@@ -792,14 +791,12 @@ class ModelView(BaseView, metaclass=ModelViewMeta):
         stmt = stmt.limit(page_size).offset((page - 1) * page_size)
         rows = await self._run_query(stmt)
 
-        pagination = Pagination(
+        return Pagination(
             rows=rows,
             page=page,
             page_size=page_size,
             count=count,
         )
-
-        return pagination
 
     async def get_model_objects(
         self, request: Request, limit: Union[int, None] = 0
@@ -811,8 +808,7 @@ class ModelView(BaseView, metaclass=ModelViewMeta):
         for relation in self._list_relations:
             stmt = stmt.options(joinedload(relation))
 
-        rows = await self._run_query(stmt)
-        return rows
+        return await self._run_query(stmt)
 
     async def _get_object_by_pk(self, stmt: Select) -> Any:
         rows = await self._run_query(stmt)
@@ -859,8 +855,7 @@ class ModelView(BaseView, metaclass=ModelViewMeta):
         value = self.get_prop_value(obj, prop)
         formatted_value = self._default_formatter(value)
 
-        formatter = self._list_formatters.get(prop)
-        if formatter:
+        if formatter := self._list_formatters.get(prop):
             formatted_value = formatter(obj, prop)
         return value, formatted_value
 
@@ -870,8 +865,7 @@ class ModelView(BaseView, metaclass=ModelViewMeta):
         value = self.get_prop_value(obj, prop)
         formatted_value = self._default_formatter(value)
 
-        formatter = self._detail_formatters.get(prop)
-        if formatter:
+        if formatter := self._detail_formatters.get(prop):
             formatted_value = formatter(obj, prop)
         return value, formatted_value
 
